@@ -1,12 +1,20 @@
 {
   "name": "augmentworks",
   "displayName": "AugmentWorks",
-  "version": "0.1.0",
-  "description": "Run regression tests against your HTTP agent, inspect failed checks, and compare the results after a fix.",
-  "author": { "name": "AugmentWorks" },
+  "version": "0.2.0",
+  "description": "Test your HTTP agent locally and inspect hosted AugmentWorks results through MCP.",
+  "author": {
+    "name": "AugmentWorks"
+  },
   "homepage": "https://augmentworks.ai",
   "repository": "https://github.com/augmentworks-org/augmentworks-cursor-plugin",
   "license": "Apache-2.0",
   "logo": "assets/augmentworks.png",
-  "keywords": ["agent-testing", "chatbot", "regression-testing", "evals"]
+  "keywords": [
+    "agent-testing",
+    "chatbot",
+    "regression-testing",
+    "evals",
+    "mcp"
+  ]
 }

@@ -1,12 +1,22 @@
 {
   "name": "augmentworks-cursor-plugin",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "license": "Apache-2.0",
-  "engines": { "node": ">=22.12.0" },
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "test": "node --test",
-    "test:e2e": "node --test test/e2e.test.mjs"
+    "test:e2e": "node --test test/e2e.test.mjs",
+    "build:mcp": "node scripts/build-mcp.mjs",
+    "check:mcp": "node scripts/build-mcp.mjs --check",
+    "test:mcp": "node --test test/mcp.test.mjs"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "esbuild": "0.28.2",
+    "zod": "4.6.7"
   }
 }

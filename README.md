@@ -30,13 +30,44 @@ Run `/augmentworks-test` and keep the path to `report.json`. After you fix the a
 
 Local tests call the agent configured in your project, which may incur costs at your own providers. They use no AugmentWorks credits. If you want a shared dashboard and hosted grading, use `/augmentworks-hosted` from a signed-in workspace. [AugmentWorks agent setup](https://augmentworks.ai/docs/agent-setup) · [Local quickstart](https://augmentworks.ai/docs/local-quickstart) · [Hosted quickstart](https://augmentworks.ai/docs/quickstart)
 
+## Connect your AugmentWorks workspace with MCP
+
+The plugin includes a read-only MCP server for shared, hosted results. Cursor launches it as a local Node process and it calls the existing AugmentWorks HTTPS API. The server and its runtime ship in the checkout. Installing a separate service or running a build is unnecessary. Keep using the slash commands above for local JSON reports and for starting a hosted assessment.
+
+1. If you already installed the plugin, update your checkout with `git -C ~/.cursor/plugins/local/augmentworks pull --ff-only`.
+2. In [workspace API keys](https://augmentworks.ai/portal/settings/api-keys), create a key with the **Report inspection** preset for the workspace you want to read.
+3. Make that key available to the **Cursor application process** as `AUGMENTWORKS_API_KEY`. On macOS or Linux, you can fully quit Cursor, open Bash, and run the following in your project. The first line prompts without echoing the key or recording it in shell history.
+
+   ```bash
+   read -rsp 'AugmentWorks workspace key: ' AUGMENTWORKS_API_KEY && echo
+   export AUGMENTWORKS_API_KEY
+   cursor .
+   ```
+
+   You can also inject the variable with your usual local secret manager. Keep the key out of agent chat, Git, and project config. If you set the variable in Cursor’s integrated terminal, restart Cursor from the environment that holds it so the MCP process receives it.
+4. In Cursor’s MCP settings, enable the plugin’s **workspace** server if prompted. Open Agent chat and ask **“List my AugmentWorks applications and pinned baselines.”** An empty list is valid for a workspace without entries.
+
+| MCP tool | What you can ask |
+| --- | --- |
+| `list_applications` | “Which applications, environments and baselines are saved in this workspace?” Each pin includes its source run ID. |
+| `get_run_report` | “Show me the outcome, coverage and known failed checks for run `<run UUID>`.” Pending results stay pending. Older reports can omit failure IDs. |
+| `compare_runs` | “Compare candidate `<run UUID>` with baseline `<baseline UUID>`. Which required checks regressed?” You can also supply an earlier run UUID as the baseline. |
+
+Find an unpinned candidate’s UUID in the [runs dashboard](https://augmentworks.ai/portal/runs) or the CLI’s hosted-run output. The hosted API exposes pinned baselines through discovery. It has no endpoint for listing every recent run. The tools return summaries and identifiers, omit transcripts, and use no assessment credits. For report and comparison details beyond the summary, open the saved run in the dashboard.
+
+Other stdio-capable MCP clients can launch `node` with the absolute path to `mcp/server.mjs` and supply the same environment variable. [Cursor MCP configuration](https://cursor.com/docs/mcp)
+
 ## Verify a checkout
 
 ```sh
+npm ci --ignore-scripts
+npm run check:mcp
 npm test
 ```
 
-The tests check plugin discovery files, inspect and compare local reports, and exercise the published CLI against two loopback agents. They cover a refund-policy violation and a response-only FAQ that changes from failing to passing. The tests use temporary project directories and require no AugmentWorks credentials. To run only those end-to-end cases, use `npm run test:e2e`.
+The MCP tests use the official SDK client to launch the server and exercise its tools against hosted API fixtures without credentials. After updating a runtime dependency, run `npm run build:mcp` and commit the regenerated SDK bundle and third-party notices. CI verifies reproducibility. To run just the MCP tests, use `npm run test:mcp`.
+
+The regression tests check plugin discovery files, inspect and compare local reports, and exercise the published CLI against two loopback agents. They cover a refund-policy violation and a response-only FAQ that changes from failing to passing. The tests use temporary project directories and require no AugmentWorks credentials. To run only those end-to-end cases, use `npm run test:e2e`.
 
 If the commands do not appear, check that `.cursor-plugin/plugin.json` sits directly inside the cloned plugin directory, reload the window, and check **Customize** again. Use a real checkout in that directory. Enterprise workspaces also need **Allow Local Plugin Imports** enabled. [Cursor plugin installation](https://cursor.com/docs/plugins)
 
