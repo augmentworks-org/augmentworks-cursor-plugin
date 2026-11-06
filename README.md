@@ -72,3 +72,10 @@ The regression tests check plugin discovery files, inspect and compare local rep
 If the commands do not appear, check that `.cursor-plugin/plugin.json` sits directly inside the cloned plugin directory, reload the window, and check **Customize** again. Use a real checkout in that directory. Enterprise workspaces also need **Allow Local Plugin Imports** enabled. [Cursor plugin installation](https://cursor.com/docs/plugins)
 
 [Apache 2.0 license](LICENSE)
+
+
+### Shared MCP read contracts
+
+The plugin bundles the read module from [the CLI repository](https://github.com/augmentworks-org/augmentworks-cli/tree/5247760ae00661e8ca2e18dd38572c69e34a03dd/packages/mcp-contracts) so installing the plugin requires no separate contracts package or build. The tool names and saved-result formats are shared with other AugmentWorks adapters. HTTP credentials and transport policy stay in this plugin.
+
+Maintainers can check the bundle and fixtures offline with `npm run check:mcp`. CI also compares the exact bytes with the public source revision using `node scripts/check-read-contract.mjs --upstream`. To update, copy the reviewed revision's `packages/mcp-contracts/index.mjs` and `fixtures/read-v1.json` into `mcp/vendor/read-contract.mjs` and `test/fixtures/read-v1.json`. Record the CLI commit and both SHA-256 hashes in `mcp/vendor/read-contract.lock.json`, update the source link, and run both checks and `npm test`.
