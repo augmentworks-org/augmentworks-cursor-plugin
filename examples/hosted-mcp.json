@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "augmentworks-staging": {
+      "url": "${env:AUGMENTWORKS_MCP_URL}",
+      "auth": {
+        "CLIENT_ID": "augmentworks-cursor",
+        "scopes": ["mcp:read"]
+      }
+    }
+  }
+}
