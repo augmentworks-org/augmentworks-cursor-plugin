@@ -92,7 +92,7 @@ async function session(t, {
       if (${oversized}) return new Response('x'.repeat(2 * 1024 * 1024 + 1));
       return Response.json(${status} === 200 ? bodies[url.pathname] : {error: ${JSON.stringify(privateText)}}, {status: ${status}});
     };`);
-  const config = JSON.parse(await readFile(join(location, 'mcp.json'), 'utf8'));
+  const config = JSON.parse(await readFile(join(location, 'examples/api-key-mcp.json'), 'utf8'));
   const [server] = Object.values(config.mcpServers);
   assert.equal(server.command, 'node');
   assert.equal(server.type, 'stdio');
@@ -100,7 +100,7 @@ async function session(t, {
   assert.deepEqual(server.env, { AUGMENTWORKS_API_KEY: variable });
   const childEnv = Object.fromEntries(Object.entries(server.env)
     .map(([name, value]) => [name, value.replace(variable, () => credential)]));
-  const args = server.args.map(arg => arg.replaceAll('${CURSOR_PLUGIN_ROOT}', location));
+  const args = server.args.map(arg => arg.replaceAll('${env:AUGMENTWORKS_PLUGIN_ROOT}', location));
   const client = new Client({ name: 'aug-interop-test', version: '1.0.0' });
   const transport = new StdioClientTransport({
     command: process.execPath, args: ['--import', pathToFileURL(preload).href, ...args],
@@ -233,7 +233,7 @@ for (const [problem, options] of [
 test('MCP starts from a standalone plugin copy with no node_modules or project package', async t => {
   const location = await mkdtemp(join(tmpdir(), 'aw packaged plugin '));
   t.after(() => rm(location, { recursive: true, force: true }));
-  for (const item of ['mcp.json', '.cursor-plugin/plugin.json', 'mcp']) {
+  for (const item of ['examples/api-key-mcp.json', '.cursor-plugin/plugin.json', 'mcp']) {
     await cp(join(pluginRoot, item), join(location, item), { recursive: true });
   }
   const { client, calls } = await session(t, { location, credential: '' });

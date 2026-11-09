@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "augmentworks-api-key": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${env:AUGMENTWORKS_PLUGIN_ROOT}/mcp/server.mjs"
+      ],
+      "env": {
+        "AUGMENTWORKS_API_KEY": "${env:AUGMENTWORKS_API_KEY}"
+      }
+    }
+  }
+}

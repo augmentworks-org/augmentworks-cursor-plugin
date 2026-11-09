@@ -1,11 +1,12 @@
 {
   "mcpServers": {
     "workspace": {
-      "type": "stdio",
-      "command": "node",
-      "args": ["${CURSOR_PLUGIN_ROOT}/mcp/server.mjs"],
-      "env": {
-        "AUGMENTWORKS_API_KEY": "${env:AUGMENTWORKS_API_KEY}"
+      "url": "https://augmentworks.ai/mcp",
+      "auth": {
+        "CLIENT_ID": "augmentworks-cursor",
+        "scopes": [
+          "mcp:read"
+        ]
       }
     }
   }

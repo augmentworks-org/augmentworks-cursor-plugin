@@ -1,16 +1,16 @@
 # AugmentWorks for Cursor
 
-Test the HTTP agent you’re building, see which policy check failed, and run the same check after a fix. Start with `/augmentworks-demo` to watch a refund agent issue an $80 refund against a $50 limit. The test checks what happened to the order, so a reassuring chatbot reply can't hide the bug.
+Connect your AugmentWorks workspace through browser sign-in, then inspect saved reports and compare runs in Cursor chat. The plugin also includes local HTTP-agent testing: `/augmentworks-demo` shows a refund agent issuing an $80 refund against a $50 limit, then verifies the correction.
 
 ## Install and try it
 
-You need Cursor, Git, and Node.js **22.12 or newer** with npm. Clone the plugin into Cursor’s local plugin directory. While the repository is private, use a GitHub account with access.
+You need Cursor and Git to install the plugin. Local demo and test commands also require Node.js **22.12 or newer** with npm; the default remote MCP connection does not launch a local Node process. Clone the plugin into Cursor’s local plugin directory. While the repository is private, use a GitHub account with access.
 
 ```sh
 git clone https://github.com/augmentworks-org/augmentworks-cursor-plugin.git ~/.cursor/plugins/local/augmentworks
 ```
 
-On Windows PowerShell, use `"$HOME/.cursor/plugins/local/augmentworks"` as the clone destination. In Cursor, run **Developer: Reload Window** from the Command Palette. Open **Customize** and look for **AugmentWorks**. Open a project, then type `/augmentworks-demo` in Agent chat. Choose the matching command from the slash menu.
+On Windows PowerShell, use `"$HOME/.cursor/plugins/local/augmentworks"` as the clone destination. In Cursor, run **Developer: Reload Window** from the Command Palette. Open **Customize** and look for **AugmentWorks**. To connect your workspace, follow [browser sign-in](#connect-your-workspace-with-browser-sign-in) below or select `/augmentworks-connect` in Agent chat. To try local testing without an account, open a project and select `/augmentworks-demo` from the slash menu.
 
 Cursor runs the published `@augmentworks/cli@0.4.2` through `npx`. The first run needs access to npm. The demo then runs entirely on loopback, needs no account or model key, and writes its reports under the open project’s `.augmentworks/demo/` directory. A successful demo shows the original failure and the corrected result.
 
@@ -18,11 +18,12 @@ Cursor runs the published `@augmentworks/cli@0.4.2` through `npx`. The first run
 
 | Cursor command | What it does |
 | --- | --- |
+| `/augmentworks-connect` | Guides you through Cursor’s browser sign-in and verifies access to saved workspace results. |
 | `/augmentworks-demo` | Tests both versions of the example refund agent and identifies the check that changed. |
-| `/augmentworks-setup` | Configures an agent and validates its mapping with the CLI. Ask for workspace sign-in to connect to saved results instead. |
+| `/augmentworks-setup` | Connects your workspace by default, or configures local tests when you specify an HTTP target. |
 | `/augmentworks-test` | Runs a local packet against your authorized target. Shows the failing checks and where to open the HTML report. |
 | `/augmentworks-compare` | Compares two saved local JSON reports by scenario, repetition, and check. Flags differences in coverage or configuration that affect interpretation. |
-| `/augmentworks-hosted` | Quotes a hosted AugmentWorks assessment. Starting a hosted run requires an approved target and credit ceiling. |
+| `/augmentworks-hosted` | Uses the separate CLI workflow to quote and run a hosted assessment with an approved target and credit ceiling. MCP execution is not available yet. |
 
 For a first test, open the project that owns the HTTP endpoint, run `/augmentworks-setup`, and tell Cursor which endpoint receives messages and which JSON field contains the answer. Keep target credentials in your local environment. For a response-only bot, the bundled packet asks about a fictional store’s return window and checks for the literal phrase “30 days.” Change the question and expected phrase to match one of your own policies. For a workflow agent, configure the operations and observations required by its packet.
 
@@ -30,41 +31,22 @@ Run `/augmentworks-test` and keep the path to `report.json`. After you fix the a
 
 Local tests call the agent configured in your project, which may incur costs at your own providers. They use no AugmentWorks credits. If you want a shared dashboard and hosted grading, use `/augmentworks-hosted` from a signed-in workspace. [AugmentWorks agent setup](https://augmentworks.ai/docs/agent-setup) · [Local quickstart](https://augmentworks.ai/docs/local-quickstart) · [Hosted quickstart](https://augmentworks.ai/docs/quickstart)
 
-## Connect your AugmentWorks workspace with MCP
+## Connect your workspace with browser sign-in
 
-Choose one connection for reading saved results. The bundled connection works with a workspace API key. If your team has enabled a staging endpoint, you can [use browser sign-in instead](#use-browser-sign-in-on-staging). Both expose the same three read tools.
+The plugin registers one remote **workspace** MCP connection at `https://augmentworks.ai/mcp`. Cursor manages OAuth and stores the connection credentials. You do not create an API key, set an environment variable, or sign in with the CLI for this connection.
 
-### Use the bundled workspace server (default)
+1. Open **Customize → MCPs**, find the AugmentWorks plugin's **workspace** connection, and enable it.
+2. Choose Cursor's **Authenticate** or **Connect** control (the label varies by version). Cursor opens the AugmentWorks sign-in page in your browser.
+3. Sign in, choose the workspace you want Cursor to access, and select **Allow read access**. The callback returns you to Cursor; use **Return to Cursor** if the browser shows that link.
+4. In Agent chat, ask **“List my AugmentWorks applications and pinned baselines.”** The connection is verified when `list_applications` succeeds. A successful empty list is valid for a workspace without applications.
 
-The plugin includes a read-only MCP server for shared, hosted results. Cursor launches it as a local Node process and it calls the existing AugmentWorks HTTPS API. The server and its runtime ship in the checkout. Installing a separate service or running a build is unnecessary. Keep using the slash commands above for local JSON reports and for starting a hosted assessment.
+`/augmentworks-connect` guides you through the same flow. A website or CLI message saying “auth succeeded” does not by itself verify MCP access. Saved-result reads continue through MCP in chat; the agent never needs your OAuth token or API key.
 
-1. If you already installed the plugin, update your checkout with `git -C ~/.cursor/plugins/local/augmentworks pull --ff-only`.
-2. In [workspace API keys](https://augmentworks.ai/portal/settings/api-keys), create a key with the **Report inspection** preset for the workspace you want to read.
-3. Make that key available to the **Cursor application process** as `AUGMENTWORKS_API_KEY`. On macOS or Linux, you can fully quit Cursor, open Bash, and run the following in your project. The first line prompts without echoing the key or recording it in shell history.
+The hosted MCP service must be enabled by the AugmentWorks deployment operator. If it returns 404 or no authentication control appears, the service is unavailable or misconfigured. Creating an API key or running CLI login will not repair that connection. See [deployment readiness](#deployment-readiness) for the operator checks.
 
-   ```bash
-   read -rsp 'AugmentWorks workspace key: ' AUGMENTWORKS_API_KEY && echo
-   export AUGMENTWORKS_API_KEY
-   cursor .
-   ```
+The current OAuth grant lasts one hour and does not include a refresh token. Cursor will ask you to sign in again after expiry. To revoke access, open [MCP connections](https://augmentworks.ai/portal/mcp/grants) in AugmentWorks. Signing back in lets you choose a different workspace.
 
-   You can also inject the variable with your usual local secret manager. Keep the key out of agent chat, Git, and project config. If you set the variable in Cursor’s integrated terminal, restart Cursor from the environment that holds it so the MCP process receives it.
-4. In Cursor’s MCP settings, enable the plugin’s **workspace** server if prompted. Open Agent chat and ask **“List my AugmentWorks applications and pinned baselines.”** An empty list is valid for a workspace without entries.
-
-### Use browser sign-in on staging
-
-You need the full HTTPS MCP URL ending in `/mcp` from the teammate who configured your AugmentWorks staging deployment, and an account with access to a staging workspace. A deployment behind a separate hosting-provider login cannot complete Cursor sign-in.
-
-1. Open **Customize → MCPs** in the project where you'll use the plugin. Turn off the AugmentWorks plugin's **workspace** server. Check user, project and team entries for another AugmentWorks connection and turn off duplicates. Leave the **AugmentWorks plugin** enabled so its five slash commands stay available. If a team policy locks a duplicate on, resolve that with the administrator before continuing.
-2. Open your personal Cursor MCP config, `~/.cursor/mcp.json`. Copy the **`augmentworks-staging` entry** from [the hosted profile](examples/hosted-mcp.json) into the existing `mcpServers` object, keeping your other servers. For a new file, copy the whole profile. If you already followed the platform staging runbook, reuse its entry.
-3. Set that entry's `url` to the exact HTTPS MCP URL you received. Alternatively, leave the supplied `${env:AUGMENTWORKS_MCP_URL}` value and set that variable in the environment that launches Cursor. Keep the public client ID `augmentworks-cursor` unless your staging operator supplies a different registered ID. Cursor handles browser sign-in with the `mcp:read` scope. Keep API keys, client secrets and bearer tokens out of this entry.
-4. Reload the window (fully restart Cursor if its launch environment changed). Enable **augmentworks-staging**, start sign-in, select the intended workspace on the AugmentWorks portal, and choose **Allow read access**. Back in **Customize → MCPs**, verify that only **augmentworks-staging** offers the three tools below. Ask **“List my AugmentWorks applications and pinned baselines.”** A successful empty list is valid. For a known staging run, ask for its report and check that its dashboard link opens the same run in the selected workspace.
-
-**Switch back.** Disable **augmentworks-staging** first, or remove just its entry from your personal config. Re-enable the plugin's **workspace** server with its Report inspection key, reload and confirm the same three tools appear under **workspace** only. To invalidate the OAuth grant as well, open `/portal/mcp/grants` on the staging portal and revoke the connection. To resume hosted reads after revocation or expiry, sign in again.
-
-Browser sign-in covers saved results. The `/augmentworks-hosted` command uses the CLI's separate sign-in, quote and credit approval to start an assessment. [Cursor MCP configuration](https://cursor.com/docs/mcp) · [Managing MCP servers in Cursor](https://cursor.com/docs/plugins#managing-installed-plugins)
-
-### Read a saved result
+### What you can do after sign-in
 
 | MCP tool | What you can ask |
 | --- | --- |
@@ -72,9 +54,61 @@ Browser sign-in covers saved results. The `/augmentworks-hosted` command uses th
 | `get_run_report` | “Show me the outcome, coverage and known failed checks for run `<run UUID>`.” Pending results stay pending. Older reports can omit failure IDs. |
 | `compare_runs` | “Compare candidate `<run UUID>` with baseline `<baseline UUID>`. Which required checks regressed?” You can also supply an earlier run UUID as the baseline. |
 
-Find an unpinned candidate’s UUID in your connected portal under `/portal/runs` or in the CLI’s hosted-run output. The default bundled connection uses the [AugmentWorks runs dashboard](https://augmentworks.ai/portal/runs). Discovery lists pinned baselines and their source runs. The tools return summaries and identifiers, omit transcripts, and use no assessment credits. For report and comparison details beyond the summary, open the saved run in the dashboard.
+Find an unpinned candidate's UUID in the [runs dashboard](https://augmentworks.ai/portal/runs) or existing CLI output. The tools return summaries and identifiers, omit transcripts, and use no assessment credits. Open the saved run in the dashboard for details beyond the summary.
 
-Other stdio-capable MCP clients can launch `node` with the absolute path to `mcp/server.mjs` and supply the same environment variable. [Cursor MCP configuration](https://cursor.com/docs/mcp)
+**Current boundary:** MCP can read saved results. It cannot quote, start or dispatch an assessment yet. `/augmentworks-hosted` remains an explicitly separate CLI workflow with its own sign-in and credit approval. Browser MCP sign-in does not sign in the CLI, and CLI sign-in does not connect MCP. Local demo/tests need neither workspace connection.
+
+### Upgrade from 0.2.0
+
+Version 0.2.0 registered a local **workspace** server that required `AUGMENTWORKS_API_KEY`. Version 0.3.0 replaces that same plugin entry with the remote OAuth server.
+
+1. For the local installation shown above, update it with `git -C ~/.cursor/plugins/local/augmentworks pull --ff-only`. For a Git-imported installation, refresh that installation in Cursor.
+2. Run **Developer: Reload Window**. In **Customize → MCPs**, verify the plugin's **workspace** connection uses `https://augmentworks.ai/mcp`. It should no longer run `node …/mcp/server.mjs`. If Cursor keeps the old process, fully quit and reopen the app.
+3. Disable any older manually added AugmentWorks API-key or staging connections. Keep the plugin enabled and one intended AugmentWorks MCP connection active. If you previously installed both a marketplace/Git copy and a local copy, update the active copy and remove the duplicate installation through Cursor.
+4. Authenticate through the remote connection, then verify with `list_applications`.
+
+An `AUGMENTWORKS_API_KEY` error means a local API-key adapter is still being called. Check which server returned it; do not paste a key into chat or run CLI login as a workaround. Keep unrelated MCP entries and credentials unchanged. Existing API-key users who deliberately want that mode can use the optional profile below.
+
+### Optional staging connection
+
+Use staging only when your operator provides an enabled HTTPS MCP endpoint. A deployment behind a separate hosting-provider login cannot complete Cursor sign-in.
+
+Disable the plugin's **workspace** MCP connection while keeping the plugin enabled. Merge only the `augmentworks-staging` entry from [examples/hosted-mcp.json](examples/hosted-mcp.json) into your personal `~/.cursor/mcp.json`, preserving other servers. Set its `url` to the operator's exact HTTPS URL ending in `/mcp`, or set `AUGMENTWORKS_MCP_URL` in the environment that launches Cursor. Keep the public client ID `augmentworks-cursor` unless the operator supplies a different registered ID. No API key or client secret belongs in the profile.
+
+Reload, enable **augmentworks-staging**, and use its browser authentication control. Verify `list_applications` against the selected staging workspace. To return to production, disable staging before re-enabling the plugin's **workspace** connection. Revoking a staging grant uses `/portal/mcp/grants` on that staging portal.
+
+### Optional API-key connection
+
+This is an explicitly selected compatibility mode for users who want a local stdio server. The default plugin never enables it or falls back to it after an OAuth failure.
+
+1. Disable the plugin's **workspace** MCP connection and other AugmentWorks entries, keeping the plugin itself enabled.
+2. Create a **Report inspection** key in [workspace API keys](https://augmentworks.ai/portal/settings/api-keys).
+3. Merge only the `augmentworks-api-key` entry from [examples/api-key-mcp.json](examples/api-key-mcp.json) into your personal `~/.cursor/mcp.json`, preserving other entries.
+4. Provide `AUGMENTWORKS_PLUGIN_ROOT` (the absolute path to the plugin checkout) and `AUGMENTWORKS_API_KEY` to the **Cursor application process** through your secret manager or launch environment. The adapter requires Node.js 22.12+. For example, fully quit Cursor, open **Bash** in your project, then run:
+
+   ```bash
+   export AUGMENTWORKS_PLUGIN_ROOT="$HOME/.cursor/plugins/local/augmentworks"
+   read -rsp 'AugmentWorks workspace key: ' AUGMENTWORKS_API_KEY && echo
+   export AUGMENTWORKS_API_KEY
+   cursor .
+   ```
+
+5. Enable **augmentworks-api-key** and verify `list_applications`. Disable it before switching back to browser OAuth. This profile does not use CLI login or browser OAuth credentials. Never place a key in chat, Git, or project config.
+
+The compatibility server and runtime remain bundled at `mcp/server.mjs`; no build or separate service is needed. Other stdio clients can launch it by absolute path with the same key environment variable.
+
+### Deployment readiness
+
+Changing the plugin config does not activate the hosted service. Before releasing the default OAuth connection, the platform operator must:
+
+- Confirm `20261106120001_hosted_mcp_read_grants.sql` is applied, and existing platform authentication, service database access and `IP_HASH_SALT` are configured.
+- Enable `AUGMENTWORKS_HOSTED_MCP_ENABLED=true`, set `MCP_PUBLIC_ORIGIN=https://augmentworks.ai` and `MCP_PORTAL_ORIGIN=https://augmentworks.ai`, and use the registered public client ID `augmentworks-cursor` (`MCP_CURSOR_CLIENT_ID`). Deploy the reviewed configuration. GitHub App flags and GitHub migrations do not enable MCP OAuth.
+- Verify anonymous `GET /mcp` returns **401** with a `WWW-Authenticate` challenge pointing to `/.well-known/oauth-protected-resource/mcp`. Both that resource metadata and `/.well-known/oauth-authorization-server` must return **200 JSON**, reference the intended origins, and advertise `mcp:read` and PKCE S256 as appropriate. A 404, hosting-provider login, or HTML response is not ready.
+- Rehearse actual Cursor desktop sign-in → workspace consent → return to Cursor → `list_applications` → known report. Test denial, expiry/revocation and workspace isolation. Keep only the chosen MCP connection enabled during the rehearsal.
+
+The registered Cursor callbacks are `http://localhost:8787/callback` and `https://www.cursor.com/agents/mcp/oauth/callback`. Cursor owns the callback listener and token storage; never use the CLI loopback flow to substitute for this verification. Automated profile and SDK tests do not prove the live endpoint is enabled or the desktop handoff succeeded.
+
+[Cursor MCP authentication and configuration](https://cursor.com/docs/mcp) · [Managing MCP servers](https://cursor.com/docs/plugins#managing-installed-plugins)
 
 ## Verify a checkout
 
