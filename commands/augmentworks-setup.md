@@ -3,7 +3,7 @@ name: augmentworks-setup
 description: Configure an HTTP agent for local tests or connect Cursor to saved AugmentWorks results.
 ---
 
-If the developer explicitly asks for MCP or workspace sign-in to read saved results, use the installed `augmentworks-regression` skill’s **Connect to saved workspace results** workflow and stop after verifying the connection.
+For sign-in, workspace connection, authentication troubleshooting, or setup without a specified local HTTP target, use the installed `augmentworks-regression` skill's **Connect to saved workspace results** workflow and stop after verifying the connection. This is the same flow as `/augmentworks-connect`. Do not use CLI login or ask for an API key to connect the default MCP server.
 
 For local test setup, use the skill's **Set up a target** workflow. Work in the selected project. Reuse an existing AugmentWorks connector when present. Otherwise choose the response-only starter for a chat endpoint or the workflow starter for a target with fixture lifecycle and state inspection.
 

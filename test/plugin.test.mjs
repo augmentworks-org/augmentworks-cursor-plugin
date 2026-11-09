@@ -18,7 +18,7 @@ test("plugin layout exposes the documented commands, skill and bundled resources
   assert.equal(icon.toString("ascii", 1, 4), "PNG");
 
   const commands = (await readdir(new URL("commands/", root))).sort();
-  const expectedNames = ["compare", "demo", "hosted", "setup", "test"].map(
+  const expectedNames = ["compare", "connect", "demo", "hosted", "setup", "test"].map(
     (action) => `augmentworks-${action}`,
   );
   assert.deepEqual(commands, expectedNames.map((name) => `${name}.md`));
