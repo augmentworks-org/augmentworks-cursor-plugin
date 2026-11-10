@@ -1,6 +1,6 @@
 {
   "name": "augmentworks-cursor-plugin",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "license": "Apache-2.0",
@@ -12,7 +12,9 @@
     "test:e2e": "node --test test/e2e.test.mjs",
     "build:mcp": "node scripts/build-mcp.mjs",
     "check:mcp": "node scripts/build-mcp.mjs --check && node scripts/check-read-contract.mjs",
-    "test:mcp": "node --test test/mcp.test.mjs"
+    "test:mcp": "node --test test/mcp.test.mjs",
+    "build:claude": "node scripts/build-claude.mjs",
+    "check:claude": "node scripts/build-claude.mjs --check"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",

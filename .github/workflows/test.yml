@@ -1,4 +1,4 @@
-name: Test Cursor plugin
+name: Test editor plugins
 
 on: [push, pull_request]
 
@@ -14,6 +14,11 @@ jobs:
         with:
           node-version: '22.12.0'
       - run: npm ci --ignore-scripts
+      - run: npm run check:claude
+      - name: Validate Claude package with the native client
+        run: npx --yes @anthropic-ai/claude-code@2.1.322 plugin validate ./plugins/claude
+      - name: Validate Claude marketplace
+        run: npx --yes @anthropic-ai/claude-code@2.1.322 plugin validate .
       - run: npm run check:mcp
       - name: Verify vendored read contract against pinned public source
         run: node scripts/check-read-contract.mjs --upstream
