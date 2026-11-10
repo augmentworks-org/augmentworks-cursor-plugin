@@ -1,8 +1,25 @@
-# AugmentWorks for Cursor
+# AugmentWorks for Cursor and Claude Code
 
 Connect your AugmentWorks workspace through browser sign-in, then inspect saved reports and compare runs in Cursor chat. The plugin also includes local HTTP-agent testing: `/augmentworks-demo` shows a refund agent issuing an $80 refund against a $50 limit, then verifies the correction.
 
-## Install and try it
+## Claude Code
+
+The Claude Code package is in [plugins/claude](plugins/claude/README.md). It exposes `/augmentworks:demo`, `/augmentworks:connect`, `/augmentworks:setup`, `/augmentworks:test`, `/augmentworks:compare`, and `/augmentworks:hosted`. Use Claude Code 2.1.281 or newer.
+
+After this version is merged, install from the repository's marketplace in Claude Code:
+
+```text
+/plugin marketplace add augmentworks-org/augmentworks-cursor-plugin
+/plugin install augmentworks@augmentworks-tools
+```
+
+Then run `/augmentworks:demo` in a project. The local demo needs Node.js 22.12+ and npm but no AugmentWorks account. For a checkout before release, start `claude --plugin-dir /absolute/path/to/plugins/claude` from your project.
+
+Saved workspace results use a separate registered Claude Code OAuth client, `augmentworks-claude-code`, with the fixed callback `http://localhost:8788/callback`. The platform must deploy support for this client before `/augmentworks:connect` can succeed. See the package README for setup, data handling, troubleshooting, and the live release checklist. This package targets Claude Code; it does not claim Claude web or mobile compatibility.
+
+The Claude package contains only its commands, skill, local report helper and FAQ packet, icon, license, and remote MCP configuration. It does not need Cursor's bundled local API-key adapter. `npm run build:claude` regenerates it from the shared source and Claude-specific templates; `npm run check:claude` detects drift.
+
+## Cursor: install and try it
 
 You need Cursor and Git to install the plugin. Local demo and test commands also require Node.js **22.12 or newer** with npm; the default remote MCP connection does not launch a local Node process. Clone the plugin into Cursor’s local plugin directory. While the repository is private, use a GitHub account with access.
 
@@ -115,6 +132,7 @@ The registered Cursor callbacks are `http://localhost:8787/callback` and `https:
 ```sh
 npm ci --ignore-scripts
 npm run check:mcp
+npm run check:claude
 npm test
 ```
 

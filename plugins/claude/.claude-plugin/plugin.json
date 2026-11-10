@@ -1,0 +1,24 @@
+{
+  "name": "augmentworks",
+  "displayName": "AugmentWorks",
+  "version": "0.4.0",
+  "description": "Test HTTP agents locally, compare regressions, and inspect saved AugmentWorks results in Claude Code.",
+  "author": {
+    "name": "AugmentWorks"
+  },
+  "homepage": "https://augmentworks.ai",
+  "repository": "https://github.com/augmentworks-org/augmentworks-cursor-plugin",
+  "license": "Apache-2.0",
+  "keywords": [
+    "agent-testing",
+    "chatbot",
+    "regression-testing",
+    "evals",
+    "mcp"
+  ],
+  "icon": "./assets/augmentworks.png",
+  "documentationUrl": "https://augmentworks.ai/docs/local-quickstart",
+  "supportUrl": "https://augmentworks.ai/contact",
+  "privacyPolicyUrl": "https://augmentworks.ai/privacy",
+  "termsOfServiceUrl": "https://augmentworks.ai/terms"
+}

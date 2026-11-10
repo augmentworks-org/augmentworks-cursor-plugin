@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "workspace": {
+      "type": "http",
+      "url": "https://augmentworks.ai/mcp",
+      "oauth": {
+        "clientId": "augmentworks-claude-code",
+        "callbackPort": 8788
+      }
+    }
+  }
+}

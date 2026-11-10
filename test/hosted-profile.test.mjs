@@ -10,9 +10,18 @@ async function readConfig(path) {
   return JSON.parse(await readFile(new URL(path, import.meta.url), "utf8"));
 }
 
-async function defaultProfile() {
-  const config = await readConfig("../mcp.json");
-  return config.mcpServers.workspace;
+async function defaultProfile(host = "cursor") {
+  const path = host === "claude" ? "../plugins/claude/.mcp.json" : "../mcp.json";
+  const config = await readConfig(path);
+  const profile = config.mcpServers.workspace;
+  return {
+    url: profile.url,
+    clientId: host === "claude" ? profile.oauth.clientId : profile.auth.CLIENT_ID,
+    scope: "mcp:read",
+    redirectUrl: host === "claude"
+      ? `http://localhost:${profile.oauth.callbackPort}/callback`
+      : "http://localhost:8787/callback",
+  };
 }
 
 test("the default connection preserves its identity and requires only browser OAuth", async () => {
@@ -54,12 +63,13 @@ test("the API-key adapter is a separate opt-in profile with an explicit installe
   });
 });
 
-for (const redirectUrl of [
-  "http://localhost:8787/callback",
-  "https://www.cursor.com/agents/mcp/oauth/callback",
+for (const [host, redirectUrl] of [
+  ["cursor", "http://localhost:8787/callback"],
+  ["cursor", "https://www.cursor.com/agents/mcp/oauth/callback"],
+  ["claude", "http://localhost:8788/callback"],
 ]) {
   test(`the default profile carries its resource, read scope and PKCE to ${redirectUrl}`, async () => {
-    const profile = await defaultProfile();
+    const profile = await defaultProfile(host);
     const issuer = new URL(profile.url).origin;
     const { authorizationUrl, codeVerifier } = await startAuthorization(issuer, {
       metadata: {
@@ -67,14 +77,14 @@ for (const redirectUrl of [
         response_types_supported: ["code"],
         code_challenge_methods_supported: ["S256"],
       },
-      clientInformation: { client_id: profile.auth.CLIENT_ID },
+      clientInformation: { client_id: profile.clientId },
       resource: new URL(profile.url),
-      scope: profile.auth.scopes.join(" "),
+      scope: profile.scope,
       redirectUrl,
       state: "fixture-state",
     });
     const params = authorizationUrl.searchParams;
-    assert.equal(params.get("client_id"), "augmentworks-cursor");
+    assert.equal(params.get("client_id"), host === "claude" ? "augmentworks-claude-code" : "augmentworks-cursor");
     assert.equal(params.get("resource"), profile.url);
     assert.equal(params.get("scope"), "mcp:read");
     assert.equal(params.get("redirect_uri"), redirectUrl);
@@ -86,9 +96,9 @@ for (const redirectUrl of [
 }
 
 // This exercises the SDK with the actual shipped profile and deterministic
-// discovery/token/MCP fixtures. It does not claim a live Cursor or provider run.
-async function oauthFixture({ disabled = false } = {}) {
-  const profile = await defaultProfile();
+// discovery/token/MCP fixtures. It does not claim a live Cursor, Claude Code, or provider run.
+async function oauthFixture({ disabled = false, host = "cursor" } = {}) {
+  const profile = await defaultProfile(host);
   const issuer = new URL(profile.url).origin;
   const resourceMetadata = issuer + "/.well-known/oauth-protected-resource/mcp";
   const authorizationEndpoint = issuer + "/oauth/mcp/authorize";
@@ -99,15 +109,15 @@ async function oauthFixture({ disabled = false } = {}) {
   let tokens;
   let rejectToken = false;
   const provider = {
-    redirectUrl: "http://localhost:8787/callback",
+    redirectUrl: profile.redirectUrl,
     clientMetadata: {
-      redirect_uris: ["http://localhost:8787/callback"],
+      redirect_uris: [profile.redirectUrl],
       grant_types: ["authorization_code"],
       response_types: ["code"],
       token_endpoint_auth_method: "none",
-      scope: profile.auth.scopes.join(" "),
+      scope: profile.scope,
     },
-    clientInformation: () => ({ client_id: profile.auth.CLIENT_ID, issuer }),
+    clientInformation: () => ({ client_id: profile.clientId, issuer }),
     tokens: () => tokens,
     saveTokens: (value) => { tokens = value; },
     redirectToAuthorization: (url) => { redirects.push(url); },
@@ -136,7 +146,7 @@ async function oauthFixture({ disabled = false } = {}) {
       const params = new URLSearchParams(body);
       assert.equal(req.method, "POST");
       assert.equal(params.get("code"), "fixture-code");
-      assert.equal(params.get("client_id"), profile.auth.CLIENT_ID);
+      assert.equal(params.get("client_id"), profile.clientId);
       assert.equal(params.get("redirect_uri"), provider.redirectUrl);
       assert.equal(params.get("resource"), profile.url);
       assert.equal(params.get("code_verifier"), verifier);
@@ -168,36 +178,39 @@ async function oauthFixture({ disabled = false } = {}) {
   };
 }
 
-test("one browser authorization resumes MCP reads without an API key or CLI login", async (t) => {
-  const fixture = await oauthFixture();
-  const initial = new Client({ name: "cursor-profile-fixture", version: "1.0.0" });
-  const initialTransport = fixture.transport();
-  t.after(() => initial.close());
-  await assert.rejects(initial.connect(initialTransport), UnauthorizedError);
-  assert.equal(fixture.redirects.length, 1);
-  assert.equal(fixture.redirects[0].searchParams.get("scope"), "mcp:read");
-  assert.equal(fixture.redirects[0].searchParams.get("resource"), fixture.profile.url);
-  await initialTransport.finishAuth("fixture-code");
+for (const host of ["cursor", "claude"]) {
+  test(`${host}: browser authorization resumes MCP reads without an API key or CLI login`, async (t) => {
+    const fixture = await oauthFixture({ host });
+    const initial = new Client({ name: `${host}-profile-fixture`, version: "1.0.0" });
+    const initialTransport = fixture.transport();
+    t.after(() => initial.close());
+    await assert.rejects(initial.connect(initialTransport), UnauthorizedError);
+    assert.equal(fixture.redirects.length, 1);
+    assert.equal(fixture.redirects[0].searchParams.get("scope"), "mcp:read");
+    assert.equal(fixture.redirects[0].searchParams.get("resource"), fixture.profile.url);
+    await initialTransport.finishAuth("fixture-code");
 
-  const resumed = new Client({ name: "cursor-profile-fixture", version: "1.0.0" });
-  t.after(() => resumed.close());
-  await resumed.connect(fixture.transport());
-  const result = await resumed.callTool({ name: "list_applications", arguments: {} });
-  assert.deepEqual(JSON.parse(result.content[0].text), { applications: [], baselines: [] });
-  assert.equal(fixture.redirects.length, 1);
-  assert.equal(fixture.requests.filter((request) => request.url.endsWith("/oauth/mcp/token")).length, 1);
-  assert.doesNotMatch(JSON.stringify(fixture.requests), /aw_api_|\/cli\/|API_KEY|client_secret/);
+    const resumed = new Client({ name: `${host}-profile-fixture`, version: "1.0.0" });
+    t.after(() => resumed.close());
+    await resumed.connect(fixture.transport());
+    const result = await resumed.callTool({ name: "list_applications", arguments: {} });
+    assert.deepEqual(JSON.parse(result.content[0].text), { applications: [], baselines: [] });
+    assert.equal(fixture.redirects.length, 1);
+    assert.equal(fixture.requests.filter((request) => request.url.endsWith("/oauth/mcp/token")).length, 1);
+    assert.doesNotMatch(JSON.stringify(fixture.requests), /aw_api_|\/cli\/|API_KEY|client_secret/);
 
-  fixture.revoke();
-  await assert.rejects(resumed.callTool({ name: "list_applications", arguments: {} }), UnauthorizedError);
-  assert.equal(fixture.redirects.length, 2, "revoked access returns to browser authorization");
-});
+    fixture.revoke();
+    await assert.rejects(resumed.callTool({ name: "list_applications", arguments: {} }), UnauthorizedError);
+    assert.equal(fixture.redirects.length, 2, "revoked access returns to browser authorization");
+  });
 
-test("a disabled remote endpoint fails without pretending CLI or API-key login succeeded", async (t) => {
-  const fixture = await oauthFixture({ disabled: true });
-  const client = new Client({ name: "cursor-profile-fixture", version: "1.0.0" });
-  t.after(() => client.close());
-  await assert.rejects(client.connect(fixture.transport()), (error) => error.code === 404);
-  assert.equal(fixture.redirects.length, 0);
-  assert.deepEqual(fixture.requests.map(({ url, authorization }) => ({ url, authorization })), [{ url: fixture.profile.url, authorization: null }]);
-});
+  test(`${host}: a disabled endpoint fails without pretending CLI or API-key login succeeded`, async (t) => {
+    const fixture = await oauthFixture({ disabled: true, host });
+    const client = new Client({ name: `${host}-profile-fixture`, version: "1.0.0" });
+    t.after(() => client.close());
+    await assert.rejects(client.connect(fixture.transport()), (error) => error.code === 404);
+    assert.equal(fixture.redirects.length, 0);
+    assert.deepEqual(fixture.requests.map(({ url, authorization }) => ({ url, authorization })), [{ url: fixture.profile.url, authorization: null }]);
+  });
+
+}

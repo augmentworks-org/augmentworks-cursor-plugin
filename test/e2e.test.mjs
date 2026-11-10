@@ -10,9 +10,6 @@ import { promisify } from 'node:util';
 
 const exec = promisify(execFile);
 const cliPackage = '@augmentworks/cli@0.4.2';
-const assets = new URL('../skills/augmentworks-regression/', import.meta.url);
-const reporter = fileURLToPath(new URL('scripts/report.mjs', assets));
-const faqPacket = fileURLToPath(new URL('assets/faq-packet.json', assets));
 
 async function project(t) {
   const cwd = await mkdtemp(join(tmpdir(), 'AugmentWorks plugin smoke '));
@@ -45,7 +42,7 @@ async function cli(cwd, args, expectedCode = 0) {
   }
 }
 
-async function report(cwd, ...args) {
+async function report(reporter, cwd, ...args) {
   const { stdout } = await exec(process.execPath, [reporter, ...args], { cwd });
   return JSON.parse(stdout);
 }
@@ -61,71 +58,81 @@ async function verifyArtifacts(json, html, junit, outcome) {
   assert.match(xml, /<testsuite[s]?\b/);
 }
 
-test('the packaged refund demo exposes and fixes the policy failure', async t => {
-  const cwd = await project(t);
-  const demo = JSON.parse(await cli(cwd, ['demo', '--json']));
-  assert.equal(demo.ok, true);
-  assert.equal(demo.cleanup.ok, true);
-  const { faulty, corrected } = demo.runs;
-  assert.deepEqual([faulty.exit_code, corrected.exit_code], [10, 0]);
-  for (const run of [faulty, corrected]) {
-    const { json, html, junit } = run.reports;
-    await verifyArtifacts(json, html, junit, run === faulty ? 'failed' : 'passed');
-  }
+for (const [host, resourcePath] of [
+  ['Cursor', '../skills/augmentworks-regression/'],
+  ['Claude Code', '../plugins/claude/skills/augmentworks-regression/'],
+]) {
+  const assets = new URL(resourcePath, import.meta.url);
+  const reporter = fileURLToPath(new URL('scripts/report.mjs', assets));
+  const faqPacket = fileURLToPath(new URL('assets/faq-packet.json', assets));
 
-  const failed = await report(cwd, 'inspect', faulty.reports.json);
-  const key = 'policy-limit-order-remains-paid';
-  assert.equal(failed.outcome, 'failed');
-  assert.ok(failed.issues.some(issue => issue.failed_checks.includes(key)));
-  const diff = await report(cwd, 'compare', faulty.reports.json, corrected.reports.json);
-  assert.equal(diff.comparable, true);
-  assert.equal(diff.current_outcome, 'passed');
-  assert.ok(diff.changes.some(change => change.check === key && change.classification === 'fixed'));
-});
-
-test('setup, doctor, local FAQ failure, fix, and comparison work against a configured HTTP target', async t => {
-  const cwd = await project(t);
-  const fixtureKey = 'local-smoke-fixture';
-  const received = [];
-  let answer = 'Your return window is 7 days.';
-  const server = createServer(async (request, response) => {
-    if (request.method !== 'POST' || request.url !== '/chat' ||
-        request.headers.authorization !== `Bearer ${fixtureKey}`) {
-      response.writeHead(403).end();
-      return;
+  test(`${host}: packaged refund demo exposes and fixes the policy failure`, async t => {
+    const cwd = await project(t);
+    const demo = JSON.parse(await cli(cwd, ['demo', '--json']));
+    assert.equal(demo.ok, true);
+    assert.equal(demo.cleanup.ok, true);
+    const { faulty, corrected } = demo.runs;
+    assert.deepEqual([faulty.exit_code, corrected.exit_code], [10, 0]);
+    for (const run of [faulty, corrected]) {
+      const { json, html, junit } = run.reports;
+      await verifyArtifacts(json, html, junit, run === faulty ? 'failed' : 'passed');
     }
-    let body = '';
-    for await (const chunk of request) body += chunk;
-    received.push(JSON.parse(body).message);
-    response.writeHead(200, { 'Content-Type': 'application/json' });
-    response.end(JSON.stringify({ answer, finished: true }));
-  });
-  await new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', resolve);
-  });
-  t.after(() => new Promise(resolve => server.close(resolve)));
 
-  await cli(cwd, ['init', '--agent']);
-  assert.ok((await readFile(join(cwd, 'augmentworks.agent.md'), 'utf8')).length > 0);
-  const baseUrl = `http://127.0.0.1:${server.address().port}`;
-  await writeFile(join(cwd, '.env'), `CHATBOT_BASE_URL=${baseUrl}\nCHATBOT_API_KEY=${fixtureKey}\n`);
-  await cli(cwd, ['doctor', '-c', 'augmentworks.yaml']);
-  assert.equal(received.length, 0);
+    const failed = await report(reporter, cwd, 'inspect', faulty.reports.json);
+    const key = 'policy-limit-order-remains-paid';
+    assert.equal(failed.outcome, 'failed');
+    assert.ok(failed.issues.some(issue => issue.failed_checks.includes(key)));
+    const diff = await report(reporter, cwd, 'compare', faulty.reports.json, corrected.reports.json);
+    assert.equal(diff.comparable, true);
+    assert.equal(diff.current_outcome, 'passed');
+    assert.ok(diff.changes.some(change => change.check === key && change.classification === 'fixed'));
+  });
 
-  const flags = ['test', '--local', '-c', 'augmentworks.yaml', '--packet', faqPacket, '--output-dir'];
-  const before = join(cwd, '.augmentworks', 'runs', 'before fix');
-  const after = join(cwd, '.augmentworks', 'runs', 'after fix');
-  await cli(cwd, [...flags, before], 10);
-  answer = 'You have 30 days to return an item.';
-  await cli(cwd, [...flags, after]);
-  for (const [dir, outcome] of [[before, 'failed'], [after, 'passed']]) {
-    await verifyArtifacts(join(dir, 'report.json'), join(dir, 'report.html'), join(dir, 'junit.xml'), outcome);
-  }
-  assert.ok(received.length >= 2);
-  assert.ok(received.every(question => question === 'How long do I have to return an item?'));
-  const diff = await report(cwd, 'compare', join(before, 'report.json'), join(after, 'report.json'));
-  assert.equal(diff.comparable, true);
-  assert.deepEqual([diff.baseline_outcome, diff.current_outcome], ['failed', 'passed']);
-  assert.ok(diff.changes.some(change => change.classification === 'fixed'));
-});
+  test(`${host}: setup, doctor, local FAQ failure, fix, and comparison work against a configured HTTP target`, async t => {
+    const cwd = await project(t);
+    const fixtureKey = 'local-smoke-fixture';
+    const received = [];
+    let answer = 'Your return window is 7 days.';
+    const server = createServer(async (request, response) => {
+      if (request.method !== 'POST' || request.url !== '/chat' ||
+          request.headers.authorization !== `Bearer ${fixtureKey}`) {
+        response.writeHead(403).end();
+        return;
+      }
+      let body = '';
+      for await (const chunk of request) body += chunk;
+      received.push(JSON.parse(body).message);
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify({ answer, finished: true }));
+    });
+    await new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, '127.0.0.1', resolve);
+    });
+    t.after(() => new Promise(resolve => server.close(resolve)));
+
+    await cli(cwd, ['init', '--agent']);
+    assert.ok((await readFile(join(cwd, 'augmentworks.agent.md'), 'utf8')).length > 0);
+    const baseUrl = `http://127.0.0.1:${server.address().port}`;
+    await writeFile(join(cwd, '.env'), `CHATBOT_BASE_URL=${baseUrl}\nCHATBOT_API_KEY=${fixtureKey}\n`);
+    await cli(cwd, ['doctor', '-c', 'augmentworks.yaml']);
+    assert.equal(received.length, 0);
+
+    const flags = ['test', '--local', '-c', 'augmentworks.yaml', '--packet', faqPacket, '--output-dir'];
+    const before = join(cwd, '.augmentworks', 'runs', 'before fix');
+    const after = join(cwd, '.augmentworks', 'runs', 'after fix');
+    await cli(cwd, [...flags, before], 10);
+    answer = 'You have 30 days to return an item.';
+    await cli(cwd, [...flags, after]);
+    for (const [dir, outcome] of [[before, 'failed'], [after, 'passed']]) {
+      await verifyArtifacts(join(dir, 'report.json'), join(dir, 'report.html'), join(dir, 'junit.xml'), outcome);
+    }
+    assert.ok(received.length >= 2);
+    assert.ok(received.every(question => question === 'How long do I have to return an item?'));
+    const diff = await report(reporter, cwd, 'compare', join(before, 'report.json'), join(after, 'report.json'));
+    assert.equal(diff.comparable, true);
+    assert.deepEqual([diff.baseline_outcome, diff.current_outcome], ['failed', 'passed']);
+    assert.ok(diff.changes.some(change => change.classification === 'fixed'));
+  });
+
+}

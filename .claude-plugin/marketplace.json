@@ -1,0 +1,16 @@
+{
+  "name": "augmentworks-tools",
+  "owner": {
+    "name": "AugmentWorks"
+  },
+  "metadata": {
+    "description": "AugmentWorks tools for testing AI agents and inspecting regression evidence."
+  },
+  "plugins": [
+    {
+      "name": "augmentworks",
+      "source": "./plugins/claude",
+      "description": "Test HTTP agents locally and inspect saved AugmentWorks results in Claude Code."
+    }
+  ]
+}
