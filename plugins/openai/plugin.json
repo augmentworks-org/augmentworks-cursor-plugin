@@ -1,0 +1,92 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "augmentworks",
+  "version": "1.0.0",
+  "description": "Read saved AI agent evaluation reports and compare runs in an AugmentWorks workspace.",
+  "author": {
+    "name": "AugmentWorks",
+    "url": "https://augmentworks.ai"
+  },
+  "homepage": "https://augmentworks.ai",
+  "repository": "https://github.com/augmentworks-org/augmentworks-cursor-plugin",
+  "license": "Apache-2.0",
+  "keywords": ["agent testing", "evaluations", "regression testing"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "AugmentWorks",
+        "shortDescription": "Inspect agent test results",
+        "longDescription": "For teams testing AI agents, AugmentWorks shows which requirements passed or failed in a saved evaluation. List applications and pinned baselines, open a run report, or compare two saved runs to see which checks changed. Connect an AugmentWorks account and select a workspace. Reading reports uses no assessment credits.",
+        "developerName": "AugmentWorks",
+        "category": "Developer Tools",
+        "capabilities": ["List applications and baselines", "Read evaluation reports", "Compare saved runs"],
+        "websiteURL": "https://augmentworks.ai",
+        "supportURL": "https://augmentworks.ai/contact",
+        "privacyPolicyURL": "https://augmentworks.ai/privacy",
+        "termsOfServiceURL": "https://augmentworks.ai/terms",
+        "defaultPrompt": [
+          "What applications and pinned baselines are in my workspace?",
+          "Which checks failed in the run behind my pinned baseline?",
+          "Compare my candidate run with its pinned baseline."
+        ],
+        "composerIcon": "./assets/augmentworks.png",
+        "logo": "./assets/augmentworks.png"
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Discover workspace applications",
+              "prompt": "List the applications and environments in my AugmentWorks workspace.",
+              "tools_triggered": "list_applications",
+              "expected_behavior": "Show the application and environment names returned by the connected workspace. Say when the result is empty or truncated."
+            },
+            {
+              "description": "Find a baseline and its source run",
+              "prompt": "List my pinned baselines and the source run ID for each.",
+              "tools_triggered": "list_applications",
+              "expected_behavior": "Show the returned pin names, baseline IDs and corresponding source run IDs. Report an empty result when there are no pins."
+            },
+            {
+              "description": "Read an evaluation report",
+              "prompt": "Open the saved run behind the first pinned baseline in my workspace. What was the evaluation outcome?",
+              "tools_triggered": "list_applications, get_run_report",
+              "expected_behavior": "Use the first pin's source run ID. Report its execution and evaluation status, preserve a pending outcome and link to the returned dashboard report."
+            },
+            {
+              "description": "Inspect coverage and required failures",
+              "prompt": "For the first pinned baseline, how many planned attempts completed and which required checks failed?",
+              "tools_triggered": "list_applications, get_run_report",
+              "expected_behavior": "Show completed and planned attempts plus recorded failed requirement IDs. Distinguish missing or pending judgments from a recorded pass."
+            },
+            {
+              "description": "Compare two saved evaluations",
+              "prompt": "Compare a saved candidate run with its pinned baseline. Ask me for the candidate run ID and which pin to use.",
+              "tools_triggered": "list_applications, compare_runs",
+              "expected_behavior": "Use a candidate run ID supplied by the reviewer and one matching pinned baseline. Report comparability, coverage and changed checks from the comparison."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Starting a new assessment",
+              "prompt": "Schedule a new AugmentWorks evaluation against my application tomorrow."
+            },
+            {
+              "description": "Changing a baseline",
+              "prompt": "Replace my pinned baseline with this morning's run."
+            },
+            {
+              "description": "Unrelated software question",
+              "prompt": "Explain how binary search works on a sorted array."
+            }
+          ]
+        },
+        "commerce": false,
+        "commerce_description": "The plugin provides free reads of saved workspace records and has no checkout or paid tool calls."
+      },
+      "publication": {
+        "release_notes": "First release with workspace discovery, saved run reports and baseline comparisons."
+      }
+    }
+  }
+}
