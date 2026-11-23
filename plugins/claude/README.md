@@ -21,7 +21,7 @@ To test a checkout before publication, run `claude --plugin-dir /absolute/path/t
 
 `/augmentworks:demo` runs the published `@augmentworks/cli@0.4.2` using `npx`. The first run downloads the package from npm. The demo then starts fictional refund agents on loopback: one issues an $80 refund against a $50 limit, and the corrected version respects the limit. It needs no AugmentWorks account or model-provider key.
 
-The demo writes JSON, HTML, and JUnit reports under your project's `.augmentworks/demo/`. The command checks both results and cleanup, and compares the recorded scenario and assertion outcomes to identify the check that changed. The expected inner run exit codes are 10 for the failure and 0 for the correction; an error or incomplete cleanup is not a successful demo.
+The demo writes JSON, HTML, and JUnit reports under your project's `.augmentworks/demo/`. The command checks both results and cleanup, and uses the bundled report helper to identify the check that changed. The expected inner run exit codes are 10 for the failure and 0 for the correction; an error or incomplete cleanup is not a successful demo.
 
 ## Commands
 
@@ -67,9 +67,9 @@ These tools read saved results and spend no assessment credits. They omit transc
 
 ## What runs and where data goes
 
-- **Installation:** Claude Code fetches this plugin from GitHub. The package contains instructions, a remote MCP configuration, a sample packet, and the license/icon. It has no install hooks or local MCP server and no package install on plugin load.
+- **Installation:** Claude Code fetches this plugin from GitHub. The package contains instructions, a remote MCP configuration, a local report helper, a sample packet, and the license/icon. It has no install hooks or local MCP server and no package install on plugin load.
 - **Local commands:** the first `npx --yes @augmentworks/cli@0.4.2` invocation may download the CLI and its dependencies from npm. Demo agents run on loopback. Tests of your agent send the configured test requests to the endpoint you selected, which may use other providers. Local reports stay in your project unless you choose another workflow or share them.
-- **Report inspection:** the skill instructs Claude Code to extract only test identifiers, outcomes, coverage, and comparison metadata from the report files you identify. These fields enter the Claude Code conversation and are handled by Anthropic under your account’s terms and settings. Full reports can contain private transcripts and agent state. Do not commit private reports or secrets.
+- **Report inspection:** the bundled Node.js helper reads the report files you identify and prints check IDs and outcomes rather than transcripts. Its output enters the Claude Code conversation and is therefore handled by Anthropic under your Claude account's terms and settings. Do not commit private reports or secrets.
 - **Saved workspace reads:** Claude Code authenticates to `https://augmentworks.ai/mcp` and sends tool arguments and the granted credential there. AugmentWorks returns saved workspace summaries to Claude Code. The grant is restricted to the selected workspace and read operations; revoking it stops further access but does not remove already saved reports or conversations.
 - **Hosted CLI assessments:** an explicitly selected hosted workflow sends the configured assessment inputs and permitted evidence to AugmentWorks for grading and shared reports. Review the workspace, target, data scope, and quoted credits before starting. This is separate from local testing and MCP reads.
 

@@ -4,6 +4,8 @@ Connect your AugmentWorks workspace through browser sign-in, then inspect saved 
 
 ## Claude Code
 
+The [directory edition](plugins/claude-directory/README.md) provides saved workspace reports, baseline comparisons and guidance for running the CLI yourself. Its submission source is `plugins/claude-directory`. The GitHub marketplace below distributes the native plugin, which also runs local tests.
+
 The Claude Code package is in [plugins/claude](plugins/claude/README.md). It exposes `/augmentworks:demo`, `/augmentworks:connect`, `/augmentworks:setup`, `/augmentworks:test`, `/augmentworks:compare`, and `/augmentworks:hosted`. Use Claude Code 2.1.281 or newer.
 
 After this version is merged, install from the repository's marketplace in Claude Code:
@@ -17,7 +19,7 @@ Then run `/augmentworks:demo` in a project. The local demo needs Node.js 22.12+ 
 
 Saved workspace results use a separate registered Claude Code OAuth client, `augmentworks-claude-code`, with the fixed callback `http://localhost:8788/callback`. The platform must deploy support for this client before `/augmentworks:connect` can succeed. See the package README for setup, data handling, troubleshooting, and the live release checklist. This package targets Claude Code; it does not claim Claude web or mobile compatibility.
 
-The Claude package contains only its commands, skill and FAQ packet, icon, license, and remote MCP configuration. It does not need Cursor's bundled local API-key adapter. `npm run build:claude` regenerates it from the shared source and Claude-specific templates; `npm run check:claude` detects drift.
+The Claude package contains only its commands, skill, local report helper and FAQ packet, icon, license, and remote MCP configuration. It does not need Cursor's bundled local API-key adapter. `npm run build:claude` regenerates it from the shared source and Claude-specific templates; `npm run check:claude` detects drift.
 
 ## Cursor: install and try it
 

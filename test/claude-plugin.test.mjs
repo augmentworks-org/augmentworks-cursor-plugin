@@ -31,7 +31,7 @@ test("Claude marketplace selects the self-contained package with native metadata
     { name: "augmentworks", source: "./plugins/claude" },
   ]);
   assert.equal(manifest.name, marketplace.plugins[0].name);
-  assert.equal(manifest.version, pkg.claudePluginVersion);
+  assert.equal(manifest.version, pkg.version);
   assert.equal(manifest.license, "Apache-2.0");
   assert.equal(manifest.logo, undefined);
   assert.equal(manifest.hooks, undefined);
@@ -46,7 +46,8 @@ test("Claude marketplace selects the self-contained package with native metadata
     ".claude-plugin/plugin.json", ".mcp.json", "LICENSE", "README.md", "assets/augmentworks.png",
     ...actions.map((action) => `commands/${action}.md`),
     "skills/augmentworks-regression/SKILL.md", "skills/augmentworks-regression/assets/faq-packet.json",
-  ].sort(), "Claude package contains only directory-compatible resources");
+    "skills/augmentworks-regression/scripts/report.mjs",
+  ].sort(), "Claude package excludes Cursor adapter, lockfile installs, hooks and API-key profiles");
 });
 
 test("Claude OAuth uses its registered public client and fixed callback without Cursor schema or secrets", async () => {
@@ -73,10 +74,13 @@ test("Claude discovers short commands and resolves the packaged skill resources"
     assert.ok(command.startsWith(`---\nname: ${action}\ndescription: `));
     assert.ok(command.includes("`augmentworks:augmentworks-regression`"));
     assert.ok(readme.includes(`/augmentworks:${action}`));
-    assert.doesNotMatch(command, /Cursor|scripts\/report\.mjs|\/augmentworks-(?:demo|connect|setup|test|compare|hosted)\b/);
+    assert.doesNotMatch(command, /Cursor|\/augmentworks-(?:demo|connect|setup|test|compare|hosted)\b/);
   }
-  assert.ok(skill.includes("${CLAUDE_PLUGIN_ROOT}/skills/augmentworks-regression/assets/faq-packet.json"));
-  assert.doesNotMatch(skill, /scripts\/report\.mjs|\/absolute\/skill\/path|\.\.\/\.\.\/examples\//);
+  for (const resource of ["scripts/report.mjs", "assets/faq-packet.json"]) {
+    assert.ok(skill.includes(`\${CLAUDE_PLUGIN_ROOT}/skills/augmentworks-regression/${resource}`));
+    assert.ok((await read(`skills/augmentworks-regression/${resource}`)).length > 0);
+  }
+  assert.doesNotMatch(skill, /\/absolute\/skill\/path|\.\.\/\.\.\/examples\//);
   const versions = [...readme.matchAll(/@augmentworks\/cli@([^\s`]+)/g)].map((match) => match[1]);
   assert.ok(versions.length > 0);
   assert.ok(versions.every((version) => /^\d+\.\d+\.\d+$/.test(version)));
@@ -85,15 +89,35 @@ test("Claude discovers short commands and resolves the packaged skill resources"
   assert.match(readme, /does not establish support for Claude web, mobile, or Cowork/);
 });
 
-test("installed FAQ packet resolves from the skill and matches the shared test fixture", async (t) => {
+test("installed report helper runs from a path with spaces and detects the same check being fixed", async (t) => {
   const dir = await mkdtemp(join(tmpdir(), "aw claude installed "));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const installed = join(dir, "installed plugin");
   await cp(plugin, installed, { recursive: true });
-  const resource = "skills/augmentworks-regression/assets/faq-packet.json";
-  const packet = JSON.parse(await readFile(join(installed, resource), "utf8"));
-  assert.deepEqual(packet, JSON.parse(await readFile(join(root, resource), "utf8")));
-  assert.equal(packet.scenarios[0].assertions[0].key, "return-window-30-days");
+  const makeReport = (passed) => ({
+    schema_version: "AW-LOCAL-RESULT-1", run_id: passed ? "local_fixed" : "local_failed", scorer_version: "v1",
+    target: { name: "fixture", config_sha256: "a".repeat(64) },
+    packet: { id: "refund", version: "1.0.0", sha256: "b".repeat(64) },
+    scenarios: [{ scenario_key: "refund", repetitions: 1 }],
+    outcome: passed ? "passed" : "failed",
+    counts: { scenarios: 1, attempts: 1, passed: Number(passed), failed: Number(!passed), inconclusive: 0, errors: 0 },
+    attempts: [{ scenario_key: "refund", repetition_index: 0, status: passed ? "passed" : "failed",
+      cleanup_status: "completed", turns: [{ assistant_content: "PRIVATE-TRANSCRIPT" }],
+      assertions: [{ key: "refund-limit", passed, actual: "PRIVATE-OBSERVATION" }] }],
+  });
+  const baseline = join(dir, "before report.json");
+  const candidate = join(dir, "after report.json");
+  await writeFile(baseline, JSON.stringify(makeReport(false)));
+  await writeFile(candidate, JSON.stringify(makeReport(true)));
+  const result = spawnSync(process.execPath, [join(installed, "skills/augmentworks-regression/scripts/report.mjs"),
+    "compare", baseline, candidate], { cwd: dir, encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout + result.stderr, /PRIVATE-/);
+  const comparison = JSON.parse(result.stdout);
+  assert.equal(comparison.comparable, true);
+  assert.deepEqual(comparison.changes.map(({ check, classification }) => ({ check, classification })), [
+    { check: "refund-limit", classification: "fixed" },
+  ]);
 });
 
 test("generated package is current and check mode detects drift without rewriting it", async (t) => {
