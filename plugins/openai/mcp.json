@@ -1,0 +1,22 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "workspace": {
+      "type": "streamable-http",
+      "url": "https://augmentworks.ai/mcp",
+      "extensions": {
+        "com.openai": {
+          "auth": {
+            "type": "oauth",
+            "client": {
+              "mode": "provided",
+              "clientId": "augmentworks-chatgpt",
+              "tokenEndpointAuthMethod": "none"
+            },
+            "baseScopes": ["mcp:read"]
+          }
+        }
+      }
+    }
+  }
+}
