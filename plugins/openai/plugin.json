@@ -60,23 +60,23 @@
               "expected_behavior": "Show completed and planned attempts plus recorded failed requirement IDs. Distinguish missing or pending judgments from a recorded pass."
             },
             {
-              "description": "Compare two saved evaluations",
-              "prompt": "Compare a saved candidate run with its pinned baseline. Ask me for the candidate run ID and which pin to use.",
+              "description": "Compare the completed runs behind the candidate and reference pins",
+              "prompt": "Find the candidate and reference pins in my review workspace. Compare the candidate pin's saved run against the reference pin and tell me which checks changed.",
               "tools_triggered": "list_applications, compare_runs",
-              "expected_behavior": "Use a candidate run ID supplied by the reviewer and one matching pinned baseline. Report comparability, coverage and changed checks from the comparison."
+              "expected_behavior": "List the pins, then send the candidate pin's source run ID as candidate_run_id and the distinct reference pin's baseline ID as baseline_id. Report comparability, coverage and the changes returned. If no checks changed, say so."
             }
           ],
           "negative": [
             {
-              "description": "Starting a new assessment",
+              "description": "Scheduling an assessment requires write access. Make no AugmentWorks tool calls and explain that the plugin can read completed or in-progress evaluations.",
               "prompt": "Schedule a new AugmentWorks evaluation against my application tomorrow."
             },
             {
-              "description": "Changing a baseline",
+              "description": "Replacing a pin changes workspace data. Make no AugmentWorks tool calls and explain that the user can inspect existing pins through the plugin.",
               "prompt": "Replace my pinned baseline with this morning's run."
             },
             {
-              "description": "Unrelated software question",
+              "description": "Binary search is a general programming topic and needs no workspace data. Answer directly without calling an AugmentWorks tool.",
               "prompt": "Explain how binary search works on a sorted array."
             }
           ]
