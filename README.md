@@ -4,6 +4,8 @@ Connect your AugmentWorks workspace through browser sign-in, then inspect saved 
 
 ## Claude Code
 
+The [directory edition](plugins/claude-directory/README.md) provides saved workspace reports, baseline comparisons and guidance for running the CLI yourself. Its submission source is `plugins/claude-directory`. The GitHub marketplace below distributes the native plugin, which also runs local tests.
+
 The Claude Code package is in [plugins/claude](plugins/claude/README.md). It exposes `/augmentworks:demo`, `/augmentworks:connect`, `/augmentworks:setup`, `/augmentworks:test`, `/augmentworks:compare`, and `/augmentworks:hosted`. Use Claude Code 2.1.281 or newer.
 
 After this version is merged, install from the repository's marketplace in Claude Code:
