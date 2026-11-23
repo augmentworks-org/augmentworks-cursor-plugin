@@ -1,10 +1,6 @@
 ---
 name: augmentworks-workspace
 description: Use for questions about saved AugmentWorks applications, pinned baselines, failed checks, or regressions between hosted runs.
-allowed-tools:
-  - mcp__plugin_augmentworks_workspace__list_applications
-  - mcp__plugin_augmentworks_workspace__get_run_report
-  - mcp__plugin_augmentworks_workspace__compare_runs
 ---
 
 # Inspect a saved AugmentWorks test

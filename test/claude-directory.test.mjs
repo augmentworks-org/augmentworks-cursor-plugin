@@ -49,16 +49,15 @@ test("directory edition uses the native workspace OAuth profile and leaves the l
   assert.ok((await read(native, "commands/test.md")).includes("augmentworks-regression"));
 });
 
-test("directory commands and skill grant only named workspace reads and contain no shell actions", async () => {
+test("directory instructions use the declared workspace reads without pre-approving tools or invoking a shell", async () => {
   for (const [path, required] of Object.entries(scopes)) {
     const source = await read(edition, path);
     const header = source.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/)?.[1];
     assert.ok(header, `Missing frontmatter in ${path}`);
-    const declaration = header.match(/^allowed-tools:[ \t]*([^\n]*)\n?((?:[ \t]*-[ \t]+[^\n]*(?:\n|$))*)/m);
-    assert.ok(declaration, `Missing explicit tool list in ${path}`);
-    const names = (declaration[1] + "\n" + declaration[2]).replace(/[\[\]"']/g, "")
-      .split(/[\s,]+/).filter(name => name && name !== "-");
-    assert.deepEqual(names.sort(), required.map(name => `mcp__plugin_augmentworks_workspace__${name}`).sort(), path);
+    assert.deepEqual(header.split("\n").map(line => line.split(":")[0]), ["name", "description"], path);
+    for (const tool of ["list_applications", "get_run_report", "compare_runs"]) {
+      assert.equal(source.includes("`" + tool + "`"), required.includes(tool), path + ": " + tool);
+    }
     assert.doesNotMatch(source, /!`|^\s*`{3}(?:sh|shell|bash|powershell|zsh)\b/im);
     assert.doesNotMatch(source, /(?:^|`)\s*(?:npx|npm exec|node|jq|curl|wget|bash)\s+/m);
   }
