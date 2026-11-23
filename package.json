@@ -1,6 +1,7 @@
 {
   "name": "augmentworks-cursor-plugin",
   "version": "0.4.0",
+  "claudePluginVersion": "0.4.1",
   "private": true,
   "type": "module",
   "license": "Apache-2.0",

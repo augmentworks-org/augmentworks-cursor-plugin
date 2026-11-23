@@ -53,7 +53,7 @@ const json = (value) => `${JSON.stringify(value, null, 2)}\n`;
 add(".claude-plugin/plugin.json", json({
   name: "augmentworks",
   displayName: "AugmentWorks",
-  version: pkg.version,
+  version: pkg.claudePluginVersion,
   description: "Test HTTP agents locally, compare regressions, and inspect saved AugmentWorks results in Claude Code.",
   author: cursor.author,
   homepage: "https://augmentworks.ai",
@@ -94,17 +94,18 @@ for (const action of actions) {
 
 let skill = await read("skills/augmentworks-regression/SKILL.md");
 allSource.push(skill);
-const startMarker = "## Connect to saved workspace results\n";
+const startMarker = "## Inspect and compare evidence\n";
 const endMarker = "## Inspect existing hosted results\n";
 const start = skill.indexOf(startMarker);
 const end = skill.indexOf(endMarker, start);
-if (start < 0 || end <= start) throw new Error("Shared connection workflow boundaries changed");
-skill = skill.slice(0, start) + (await read("claude-source/connect.md")).trimEnd() + "\n\n" + skill.slice(end);
+if (start < 0 || end <= start) throw new Error("Shared report or connection workflow boundaries changed");
+const reportInstructions = (await read("claude-source/reports.md")).trimEnd();
+const connectionInstructions = (await read("claude-source/connect.md")).trimEnd();
+skill = skill.slice(0, start) + reportInstructions + "\n\n" + connectionInstructions + "\n\n" + skill.slice(end);
 skill = replaceRequired(skill,
   "Resolve `scripts/report.mjs` and `assets/faq-packet.json` relative to **this SKILL.md** and use their absolute paths from the project working directory.",
-  "Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` in these instructions. Use `${CLAUDE_PLUGIN_ROOT}/skills/augmentworks-regression/scripts/report.mjs` and `${CLAUDE_PLUGIN_ROOT}/skills/augmentworks-regression/assets/faq-packet.json` as the installed resource paths. Quote each complete path and keep the developer's project as the working directory. Do not depend on these variables being present in the Bash process environment.",
+  "Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` in these instructions. Use `${CLAUDE_PLUGIN_ROOT}/skills/augmentworks-regression/assets/faq-packet.json` as the installed FAQ packet path. Quote each complete path and keep the developer's project as the working directory. Do not depend on these variables being present in the Bash process environment.",
   "installed skill resource paths");
-skill = skill.replaceAll("/absolute/skill/path", "${CLAUDE_PLUGIN_ROOT}/skills/augmentworks-regression");
 skill = adaptCommands(skill);
 if (/Cursor|\.cursor|augmentworks-cursor|\.\.\/\.\.\/examples\//.test(skill)) {
   throw new Error("Cursor-specific instructions remain in the generated Claude skill");
@@ -116,7 +117,7 @@ if (versions.length !== 1 || !/^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(versions[0])) 
   throw new Error("Shared sources must use one exact published CLI version");
 }
 add("README.md", (await read("claude-source/README.md")).replaceAll("{{CLI_VERSION}}", versions[0]));
-for (const path of ["LICENSE", "assets/augmentworks.png", "skills/augmentworks-regression/scripts/report.mjs", "skills/augmentworks-regression/assets/faq-packet.json"]) {
+for (const path of ["LICENSE", "assets/augmentworks.png", "skills/augmentworks-regression/assets/faq-packet.json"]) {
   add(path, await readFile(join(root, path)));
 }
 files.set(".claude-plugin/marketplace.json", Buffer.from(json({

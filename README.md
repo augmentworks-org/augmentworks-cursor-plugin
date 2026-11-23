@@ -17,7 +17,7 @@ Then run `/augmentworks:demo` in a project. The local demo needs Node.js 22.12+ 
 
 Saved workspace results use a separate registered Claude Code OAuth client, `augmentworks-claude-code`, with the fixed callback `http://localhost:8788/callback`. The platform must deploy support for this client before `/augmentworks:connect` can succeed. See the package README for setup, data handling, troubleshooting, and the live release checklist. This package targets Claude Code; it does not claim Claude web or mobile compatibility.
 
-The Claude package contains only its commands, skill, local report helper and FAQ packet, icon, license, and remote MCP configuration. It does not need Cursor's bundled local API-key adapter. `npm run build:claude` regenerates it from the shared source and Claude-specific templates; `npm run check:claude` detects drift.
+The Claude package contains only its commands, skill and FAQ packet, icon, license, and remote MCP configuration. It does not need Cursor's bundled local API-key adapter. `npm run build:claude` regenerates it from the shared source and Claude-specific templates; `npm run check:claude` detects drift.
 
 ## Cursor: install and try it
 
